@@ -22,8 +22,7 @@ namespace Decompiller
 
             var metadataProcessor = new MetadataProcessing.MetadataProcessor();
             var result = metadataProcessor.LoadAssembly();
-            MessageBox.Show(result);
-            Clipboard.SetText(result);
+            IlEditor.Text = result;
         }
     }
 }
