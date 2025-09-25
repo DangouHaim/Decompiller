@@ -182,12 +182,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
                     var typeProvider = new LocalTypeProvider(_reader);
                     var fieldType = _reader.DecodeFieldSignature(ref sigReader, typeProvider).SanitizeName();
 
-                    // Generate IL op code representation
                     operandStr = $"{fieldType} {fullParentName}::{fieldName}";
                 }
                 else if (handle.Kind == HandleKind.MemberReference)
                 {
-                    // MemberReference тоже можно разобрать аналогично
                     var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
                     var fieldName = _reader.GetString(mr.Name);
                     var typeName = Fallback.External;
