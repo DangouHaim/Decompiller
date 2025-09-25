@@ -1,61 +1,11 @@
-﻿using Decompiller.Extentions;
+﻿using Decompiller.MetadataProcessing.Resolvers;
+using Decompiller.Providers;
 using System.Collections;
-using System.Collections.Immutable;
 using System.Globalization;
 using System.Reflection.Emit;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using static Decompiller.MetadataProcessing.MetadataProcessor;
-
-public class LocalTypeProvider : ISignatureTypeProvider<string, object>
-{
-    private readonly AssemblyReader _reader;
-
-    public LocalTypeProvider(AssemblyReader reader) => _reader = reader;
-
-    public string GetPrimitiveType(PrimitiveTypeCode typeCode) => typeCode switch
-    {
-        PrimitiveTypeCode.Boolean => "bool",
-        PrimitiveTypeCode.Char => "char",
-        PrimitiveTypeCode.SByte => "int8",
-        PrimitiveTypeCode.Byte => "uint8",
-        PrimitiveTypeCode.Int16 => "int16",
-        PrimitiveTypeCode.UInt16 => "uint16",
-        PrimitiveTypeCode.Int32 => "int32",
-        PrimitiveTypeCode.UInt32 => "uint32",
-        PrimitiveTypeCode.Int64 => "int64",
-        PrimitiveTypeCode.UInt64 => "uint64",
-        PrimitiveTypeCode.Single => "float32",
-        PrimitiveTypeCode.Double => "float64",
-        PrimitiveTypeCode.String => "string",
-        PrimitiveTypeCode.Object => "object",
-        PrimitiveTypeCode.Void => "void",
-        _ => "object"
-    };
-
-    public string GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
-        => reader.GetString(reader.GetTypeDefinition(handle).Name);
-
-    public string GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
-        => reader.GetString(reader.GetTypeReference(handle).Name);
-
-    public string GetTypeFromSpecification(MetadataReader reader, object genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
-        => "object";
-
-    public string GetTypeFromSpecification(object genericContext, BlobReader blobReader, byte rawTypeKind)
-        => "object";
-
-    public string GetSZArrayType(string elementType) => elementType + "[]";
-    public string GetPointerType(string elementType) => elementType + "*";
-    public string GetByReferenceType(string elementType) => elementType + "&";
-    public string GetPinnedType(string elementType) => elementType;
-    public string GetArrayType(string elementType, ArrayShape shape) => elementType + "[]";
-    public string GetFunctionPointerType(MethodSignature<string> signature) => "methodptr";
-    public string GetGenericInstantiation(string genericType, ImmutableArray<string> typeArguments) => genericType;
-    public string GetGenericMethodParameter(object genericContext, int index) => "!!" + index;
-    public string GetGenericTypeParameter(object genericContext, int index) => "!" + index;
-    public string GetModifiedType(string modifier, string unmodifiedType, bool isRequired) => unmodifiedType;
-}
 
 public class ILReader : IEnumerable<string>
 {
@@ -134,6 +84,8 @@ public class ILReader : IEnumerable<string>
 
     public IEnumerator<string> GetEnumerator()
     {
+        var typeResolver = new OperandTypeResolver(_reader);
+
         int pos = 0;
 
         if (_locals.Count > 0)
@@ -164,133 +116,40 @@ public class ILReader : IEnumerable<string>
                     case OperandType.InlineNone: break;
 
                     case OperandType.InlineString:
-                        {
-                            int token = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-                            try
-                            {
-                                var handle = MetadataTokens.UserStringHandle(token);
-                                operandStr = !handle.IsNil ? $"\"{_reader.GetUserString(handle)}\"" : "\"<external>\"";
-                            }
-                            catch
-                            {
-                                operandStr = "\"<external>\"";
-                            }
-                        }
+                        operandStr = typeResolver.InlineString(_il, ref pos);
                         break;
 
-                    case OperandType.InlineMethod:
-                        {
-                            int token = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-                            operandStr = ResolveMemberReference(token, _reader);
-                        }
-                        break;
                     case OperandType.InlineField:
                         {
-                            int token = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-
-                            try
-                            {
-                                var handle = MetadataTokens.EntityHandle(token);
-
-                                if (handle.Kind == HandleKind.FieldDefinition)
-                                {
-                                    var field = _reader.Reader.GetFieldDefinition((FieldDefinitionHandle)handle);
-                                    var fieldName = _reader.GetString(field.Name);
-
-                                    // Get parent type
-                                    var parentTypeHandle = field.GetDeclaringType();
-                                    var parentType = _reader.Reader.GetTypeDefinition(parentTypeHandle);
-                                    string parentTypeName = _reader.GetString(parentType.Name);
-                                    string parentNamespace = _reader.GetString(parentType.Namespace);
-                                    string fullParentName = string.IsNullOrEmpty(parentNamespace) ? parentTypeName : parentNamespace + "." + parentTypeName;
-
-                                    // Get field type
-                                    var sigReader = _reader.Reader.GetBlobReader(field.Signature);
-                                    var typeProvider = new LocalTypeProvider(_reader);
-                                    string fieldType = _reader.DecodeFieldSignature(ref sigReader, typeProvider).SanitizeName();
-
-                                    // Generate IL op code representation
-                                    operandStr = $"{fieldType} {fullParentName}::{fieldName}";
-                                }
-                                else if (handle.Kind == HandleKind.MemberReference)
-                                {
-                                    // MemberReference тоже можно разобрать аналогично
-                                    var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                                    string fieldName = _reader.GetString(mr.Name);
-                                    string typeName = "<external>";
-
-                                    if (mr.Parent.Kind == HandleKind.TypeReference)
-                                    {
-                                        var tr = _reader.Reader.GetTypeReference((TypeReferenceHandle)mr.Parent);
-                                        string ns = _reader.GetString(tr.Namespace);
-                                        string n = _reader.GetString(tr.Name);
-                                        typeName = string.IsNullOrEmpty(ns) ? n : ns + "." + n;
-                                    }
-                                    operandStr = $"{typeName}::{fieldName}";
-                                }
-                                else
-                                {
-                                    operandStr = "<external>";
-                                }
-                            }
-                            catch
-                            {
-                                operandStr = "<external>";
-                            }
-
+                            operandStr = typeResolver.InlineField(_il, ref pos);
                             break;
                         }
 
+                    case OperandType.InlineMethod:
                     case OperandType.InlineType:
                     case OperandType.InlineTok:
-                        {
-                            int token = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-                            operandStr = ResolveMemberReference(token, _reader);
-                        }
+                        operandStr = typeResolver.InlineType(_il, ref pos);
                         break;
 
                     case OperandType.ShortInlineI:
-                        operandStr = _il[pos++].ToString();
+                        operandStr = typeResolver.ShortInlineI(_il, ref pos);
                         break;
 
                     case OperandType.InlineI:
-                        operandStr = BitConverter.ToInt32(_il, pos).ToString();
-                        pos += 4;
+                        operandStr = typeResolver.InlineI(_il, ref pos);
                         break;
 
                     case OperandType.InlineR:
-                        {
-                            double val = BitConverter.ToDouble(_il, pos);
-                            operandStr = val.ToString(CultureInfo.InvariantCulture);
-                            pos += 8;
+                            operandStr = typeResolver.InlineR(_il, ref pos);
                             break;
-                        }
+
                     case OperandType.ShortInlineVar:
+                        operandStr = typeResolver.ShortInlineVar(_il, ref pos);
+                        break;
+
                     case OperandType.InlineVar:
-                        {
-                            int index = opCode.OperandType == OperandType.ShortInlineVar
-                                ? _il[pos++]
-                                : BitConverter.ToUInt16(_il, pos);
-
-                            if (opCode.Name.StartsWith("ldarg") ||
-                                opCode.Name.StartsWith("starg") ||
-                                opCode.Name.StartsWith("ldarga"))
-                            {
-                                operandStr = index.ToString(); // Get arguments by index
-                            }
-                            else
-                            {
-                                operandStr = index.ToString(); // Get locals by index
-                            }
-
-                            if (opCode.OperandType == OperandType.InlineVar)
-                                pos += 2;
-                            break;
-                        }
+                        operandStr = typeResolver.InlineVar(_il, ref pos);
+                        break;
 
                     case OperandType.InlineSwitch:
                         {
@@ -313,7 +172,7 @@ public class ILReader : IEnumerable<string>
                         break;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 operandStr = "<invalid>";
             }
@@ -323,51 +182,4 @@ public class ILReader : IEnumerable<string>
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    private static string ResolveMemberReference(int token, AssemblyReader reader)
-    {
-        try
-        {
-            var handle = MetadataTokens.EntityHandle(token);
-            if (handle.IsNil) return "<external>";
-
-            switch (handle.Kind)
-            {
-                case HandleKind.MethodDefinition:
-                    var method = reader.GetMethodDefinition((MethodDefinitionHandle)handle);
-                    var name = reader.GetString(method.Name);
-                    var declaringType = reader.GetTypeDefinition(method.GetDeclaringType());
-                    var typeName = reader.GetString(declaringType.Name);
-                    return $"instance void {typeName.SanitizeName()}::{name.SanitizeName()}()";
-
-                case HandleKind.MemberReference:
-                    var mr = reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                    string methodName = reader.GetString(mr.Name);
-                    typeName = "<external>";
-                    if (mr.Parent.Kind == HandleKind.TypeReference)
-                    {
-                        var tr = reader.Reader.GetTypeReference((TypeReferenceHandle)mr.Parent);
-                        string ns = reader.GetString(tr.Namespace);
-                        name = reader.GetString(tr.Name);
-                        typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
-                    }
-                    return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
-
-                case HandleKind.TypeReference:
-                    var tRef = reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
-                    return reader.GetString(tRef.Name);
-
-                case HandleKind.TypeDefinition:
-                    var tDef = reader.GetTypeDefinition((TypeDefinitionHandle)handle);
-                    return reader.GetString(tDef.Name);
-
-                default:
-                    return "<external>";
-            }
-        }
-        catch
-        {
-            return "<external>";
-        }
-    }
 }
