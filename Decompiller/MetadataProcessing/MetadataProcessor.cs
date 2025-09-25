@@ -1,4 +1,5 @@
 ﻿using Decompiller.Extentions;
+using Decompiller.Providers;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -11,8 +12,8 @@ namespace Decompiller.MetadataProcessing
     {
         //private const string FilePath = @"test3\E48.exe";
         //private const string FilePath = @"test\Empty.dll";
-        private const string FilePath = @"await\Empty.dll";
-        //private const string FilePath = @"types\Empty.dll";
+        //private const string FilePath = @"await\Empty.dll";
+        private const string FilePath = @"types\Empty.dll";
         //private const string FilePath = @"test3\E48.exe";
 
         public class AssemblyReader
@@ -50,7 +51,7 @@ namespace Decompiller.MetadataProcessing
 
             public string GetUserString(UserStringHandle handle)
             {
-                return _reader.GetUserString(handle).SanitizeName();
+                return _reader.GetUserString(handle);
             }
 
             public string DecodeFieldSignature(ref BlobReader sigReader, LocalTypeProvider typeProvider)
