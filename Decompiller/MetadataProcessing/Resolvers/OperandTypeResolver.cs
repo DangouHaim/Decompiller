@@ -1,10 +1,6 @@
-﻿using Decompiller.Extentions;
-using Decompiller.MetadataProcessing.Enums;
-using Decompiller.Providers;
+﻿using Decompiller.MetadataProcessing.Enums;
 using System.Globalization;
 using System.Reflection.Emit;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Decompiller.MetadataProcessing.Resolvers
 {

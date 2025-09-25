@@ -1,6 +1,4 @@
-﻿using Decompiller.Extentions;
-using Decompiller.Providers;
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Reflection.Metadata;
 
