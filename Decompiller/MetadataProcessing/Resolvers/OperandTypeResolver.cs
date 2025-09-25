@@ -12,10 +12,12 @@ namespace Decompiller.MetadataProcessing.Resolvers
     {
         private AssemblyReader _reader;
         private TokenResolver _tokenResolver = new TokenResolver();
+        private ReferenceTypeResolver _referenceTypeResolver;
 
         public OperandTypeResolver(AssemblyReader reader)
         {
             _reader = reader;
+            _referenceTypeResolver = new ReferenceTypeResolver(reader);
         }
 
         public string InlineString(byte[] il, ref int pos)
@@ -24,21 +26,21 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
             var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveUserString(tokenValue);
+            return _referenceTypeResolver.ResolveUserString(tokenValue);
         }
 
         public string InlineType(byte[] il, ref int pos)
         {
             var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveMemberReference(tokenValue);
+            return _referenceTypeResolver.ResolveMemberReference(tokenValue);
         }
 
         public string InlineField(byte[] il, ref int pos)
         {
             var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveInlineField(tokenValue);
+            return _referenceTypeResolver.ResolveInlineField(tokenValue);
         }
 
         public string ShortInlineI(byte[] il, ref int pos)
@@ -139,137 +141,6 @@ namespace Decompiller.MetadataProcessing.Resolvers
             }
 
             return operand;
-        }
-
-        private string ResolveUserString(int token)
-        {
-            var operandStr = string.Empty;
-            try
-            {
-                var stringReference = MetadataTokens.UserStringHandle(token);
-                operandStr = !stringReference.IsNil ? $"\"{_reader.GetUserString(stringReference)}\"" : Fallback.External;
-            }
-            catch
-            {
-                operandStr = Fallback.External;
-            }
-
-            return operandStr;
-        }
-
-        private string ResolveInlineField(int token)
-        {
-            var operandStr = string.Empty;
-
-            try
-            {
-                var handle = MetadataTokens.EntityHandle(token);
-
-                if (handle.Kind == HandleKind.FieldDefinition)
-                {
-                    var fieldReference = _reader.Reader.GetFieldDefinition((FieldDefinitionHandle)handle);
-                    var fieldName = _reader.GetString(fieldReference.Name);
-
-                    // Get parent type
-                    var parentTypeHandle = fieldReference.GetDeclaringType();
-                    var parentType = _reader.Reader.GetTypeDefinition(parentTypeHandle);
-                    var parentTypeName = _reader.GetString(parentType.Name);
-                    var parentNamespace = _reader.GetString(parentType.Namespace);
-                    var fullParentName = string.IsNullOrEmpty(parentNamespace) ? parentTypeName : parentNamespace + "." + parentTypeName;
-
-                    // Get field type
-                    var sigReader = _reader.Reader.GetBlobReader(fieldReference.Signature);
-                    var typeProvider = new LocalTypeProvider(_reader);
-                    var fieldType = _reader.DecodeFieldSignature(ref sigReader, typeProvider).SanitizeName();
-
-                    operandStr = $"{fieldType} {fullParentName}::{fieldName}";
-                }
-                else if (handle.Kind == HandleKind.MemberReference)
-                {
-                    var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                    var memberName = _reader.GetString(memberReference.Name);
-                    var typeName = Fallback.External;
-
-                    if (memberReference.Parent.Kind == HandleKind.TypeReference)
-                    {
-                        var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                        var TypeNamespace = _reader.GetString(typeReference.Namespace);
-                        var name = _reader.GetString(typeReference.Name);
-                        typeName = string.IsNullOrEmpty(TypeNamespace) ? name : TypeNamespace + "." + name;
-                    }
-                    operandStr = $"{typeName}::{memberName}";
-                }
-                else
-                {
-                    operandStr = Fallback.External;
-                }
-            }
-            catch
-            {
-                operandStr = Fallback.External;
-            }
-
-            return operandStr;
-        }
-
-        private string ResolveMemberReference(int token)
-        {
-            try
-            {
-                var handle = MetadataTokens.EntityHandle(token);
-                if (handle.IsNil) return Fallback.External;
-
-                switch (handle.Kind)
-                {
-                    case HandleKind.MethodDefinition:
-                        {
-                            var memberReference = _reader.GetMethodDefinition((MethodDefinitionHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
-                            var typeName = _reader.GetString(declaringType.Name);
-
-                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
-                        }
-
-                    case HandleKind.MemberReference:
-                        {
-                            var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var typeName = Fallback.External;
-
-                            if (memberReference.Parent.Kind == HandleKind.TypeReference)
-                            {
-                                var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                                var typeNamespace = _reader.GetString(typeReference.Namespace);
-                                var name = _reader.GetString(typeReference.Name);
-                                typeName = string.IsNullOrEmpty(typeNamespace) ? name : typeNamespace + "." + name;
-                            }
-
-                            return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
-                        }
-
-                    case HandleKind.TypeReference:
-                        {
-                            var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
-
-                            return _reader.GetString(typeReference.Name);
-                        }
-
-                    case HandleKind.TypeDefinition:
-                        {
-                            var typeDefinition = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
-
-                            return _reader.GetString(typeDefinition.Name);
-                        }
-
-                    default:
-                        return Fallback.External;
-                }
-            }
-            catch
-            {
-                return Fallback.External;
-            }
         }
 
         private static int OperandSize(OperandType type) => type switch
