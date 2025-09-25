@@ -1,4 +1,5 @@
 ﻿using Decompiller.Extentions;
+using Decompiller.MetadataProcessing.Enums;
 using Decompiller.Providers;
 using System.Globalization;
 using System.Reflection.Emit;
@@ -10,8 +11,6 @@ namespace Decompiller.MetadataProcessing.Resolvers
 {
     public class OperandTypeResolver
     {
-        private const string ExternalFallback = "\"<external>\"";
-        private const string InvalidFallback = "\"<invalid>\"";
         private AssemblyReader _reader;
         private TokenResolver _tokenResolver = new TokenResolver();
 
@@ -68,17 +67,91 @@ namespace Decompiller.MetadataProcessing.Resolvers
             return _tokenResolver.ResolveToken<byte>(il, ref pos).ToString();
         }
 
+        public string Resolve(OpCode opCode, byte[] _il, ref int pos)
+        {
+            var operand = string.Empty;
+            try
+            {
+                switch (opCode.OperandType)
+                {
+                    case OperandType.InlineNone: break;
+
+                    case OperandType.InlineString:
+                        operand = InlineString(_il, ref pos);
+                        break;
+
+                    case OperandType.InlineField:
+                        {
+                            operand = InlineField(_il, ref pos);
+                            break;
+                        }
+
+                    case OperandType.InlineMethod:
+                    case OperandType.InlineType:
+                    case OperandType.InlineTok:
+                        operand = InlineType(_il, ref pos);
+                        break;
+
+                    case OperandType.ShortInlineI:
+                        operand = ShortInlineI(_il, ref pos);
+                        break;
+
+                    case OperandType.InlineI:
+                        operand = InlineI(_il, ref pos);
+                        break;
+
+                    case OperandType.InlineR:
+                        operand = InlineR(_il, ref pos);
+                        break;
+
+                    case OperandType.ShortInlineVar:
+                        operand = ShortInlineVar(_il, ref pos);
+                        break;
+
+                    case OperandType.InlineVar:
+                        operand = InlineVar(_il, ref pos);
+                        break;
+
+                    case OperandType.InlineSwitch:
+                        {
+                            int count = BitConverter.ToInt32(_il, pos);
+                            pos += 4;
+                            int[] targets = new int[count];
+                            for (int i = 0; i < count; i++)
+                            {
+                                targets[i] = BitConverter.ToInt32(_il, pos);
+                                pos += 4;
+                            }
+                            operand = string.Join(",", targets);
+                        }
+                        break;
+
+                    default:
+                        int size = OperandSize(opCode.OperandType);
+                        if (size > 0) pos += size;
+                        operand = Fallback.Unknown;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                operand = Fallback.Invalid;
+            }
+
+            return operand;
+        }
+
         private string ResolveUserString(int token)
         {
             var operandStr = string.Empty;
             try
             {
                 var handle = MetadataTokens.UserStringHandle(token);
-                operandStr = !handle.IsNil ? $"\"{_reader.GetUserString(handle)}\"" : ExternalFallback;
+                operandStr = !handle.IsNil ? $"\"{_reader.GetUserString(handle)}\"" : Fallback.External;
             }
             catch
             {
-                operandStr = ExternalFallback;
+                operandStr = Fallback.External;
             }
 
             return operandStr;
@@ -117,7 +190,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                     // MemberReference тоже можно разобрать аналогично
                     var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
                     var fieldName = _reader.GetString(mr.Name);
-                    var typeName = ExternalFallback;
+                    var typeName = Fallback.External;
 
                     if (mr.Parent.Kind == HandleKind.TypeReference)
                     {
@@ -130,12 +203,12 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 }
                 else
                 {
-                    operandStr = ExternalFallback;
+                    operandStr = Fallback.External;
                 }
             }
             catch
             {
-                operandStr = ExternalFallback;
+                operandStr = Fallback.External;
             }
 
             return operandStr;
@@ -146,7 +219,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
             try
             {
                 var handle = MetadataTokens.EntityHandle(token);
-                if (handle.IsNil) return ExternalFallback;
+                if (handle.IsNil) return Fallback.External;
 
                 switch (handle.Kind)
                 {
@@ -164,7 +237,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         {
                             var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
                             var methodName = _reader.GetString(mr.Name);
-                            var typeName = ExternalFallback;
+                            var typeName = Fallback.External;
 
                             if (mr.Parent.Kind == HandleKind.TypeReference)
                             {
@@ -192,13 +265,35 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         }
 
                     default:
-                        return ExternalFallback;
+                        return Fallback.External;
                 }
             }
             catch
             {
-                return ExternalFallback;
+                return Fallback.External;
             }
         }
+
+        private static int OperandSize(OperandType type) => type switch
+        {
+            OperandType.InlineNone => 0,
+            OperandType.ShortInlineBrTarget => 1,
+            OperandType.ShortInlineI => 1,
+            OperandType.ShortInlineVar => 1,
+            OperandType.InlineVar => 2,
+            OperandType.InlineBrTarget => 4,
+            OperandType.InlineI => 4,
+            OperandType.InlineI8 => 8,
+            OperandType.InlineR => 8,
+            OperandType.ShortInlineR => 4,
+            OperandType.InlineString => 4,
+            OperandType.InlineField => 4,
+            OperandType.InlineMethod => 4,
+            OperandType.InlineTok => 4,
+            OperandType.InlineType => 4,
+            OperandType.InlineSig => 4,
+            OperandType.InlineSwitch => -1,
+            _ => 0
+        };
     }
 }

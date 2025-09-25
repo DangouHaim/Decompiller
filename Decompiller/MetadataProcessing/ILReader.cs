@@ -1,4 +1,5 @@
-﻿using Decompiller.MetadataProcessing.Resolvers;
+﻿using Decompiller.MetadataProcessing.Enums;
+using Decompiller.MetadataProcessing.Resolvers;
 using Decompiller.Providers;
 using System.Collections;
 using System.Globalization;
@@ -60,33 +61,11 @@ public class ILReader : IEnumerable<string>
         }
     }
 
-    private static int OperandSize(OperandType type) => type switch
-    {
-        OperandType.InlineNone => 0,
-        OperandType.ShortInlineBrTarget => 1,
-        OperandType.ShortInlineI => 1,
-        OperandType.ShortInlineVar => 1,
-        OperandType.InlineVar => 2,
-        OperandType.InlineBrTarget => 4,
-        OperandType.InlineI => 4,
-        OperandType.InlineI8 => 8,
-        OperandType.InlineR => 8,
-        OperandType.ShortInlineR => 4,
-        OperandType.InlineString => 4,
-        OperandType.InlineField => 4,
-        OperandType.InlineMethod => 4,
-        OperandType.InlineTok => 4,
-        OperandType.InlineType => 4,
-        OperandType.InlineSig => 4,
-        OperandType.InlineSwitch => -1,
-        _ => 0
-    };
-
     public IEnumerator<string> GetEnumerator()
     {
         var typeResolver = new OperandTypeResolver(_reader);
 
-        int pos = 0;
+        var pos = 0;
 
         if (_locals.Count > 0)
         {
@@ -101,83 +80,16 @@ public class ILReader : IEnumerable<string>
 
         while (pos < _il.Length)
         {
-            int offset = pos;
-            OpCode opCode;
+            var offset = pos;
+            var code = _il[pos++];
 
-            byte code = _il[pos++];
-            opCode = code == 0xFE ? multiByteOpCodes[_il[pos++]] : singleByteOpCodes[code];
+            var opCode = code == (byte)ByteOpCodeType.MultiByteOpCode
+                ? multiByteOpCodes[_il[pos++]]
+                : singleByteOpCodes[code];
 
-            string operandStr = "";
+            var operand = typeResolver.Resolve(opCode, _il, ref pos);
 
-            try
-            {
-                switch (opCode.OperandType)
-                {
-                    case OperandType.InlineNone: break;
-
-                    case OperandType.InlineString:
-                        operandStr = typeResolver.InlineString(_il, ref pos);
-                        break;
-
-                    case OperandType.InlineField:
-                        {
-                            operandStr = typeResolver.InlineField(_il, ref pos);
-                            break;
-                        }
-
-                    case OperandType.InlineMethod:
-                    case OperandType.InlineType:
-                    case OperandType.InlineTok:
-                        operandStr = typeResolver.InlineType(_il, ref pos);
-                        break;
-
-                    case OperandType.ShortInlineI:
-                        operandStr = typeResolver.ShortInlineI(_il, ref pos);
-                        break;
-
-                    case OperandType.InlineI:
-                        operandStr = typeResolver.InlineI(_il, ref pos);
-                        break;
-
-                    case OperandType.InlineR:
-                            operandStr = typeResolver.InlineR(_il, ref pos);
-                            break;
-
-                    case OperandType.ShortInlineVar:
-                        operandStr = typeResolver.ShortInlineVar(_il, ref pos);
-                        break;
-
-                    case OperandType.InlineVar:
-                        operandStr = typeResolver.InlineVar(_il, ref pos);
-                        break;
-
-                    case OperandType.InlineSwitch:
-                        {
-                            int count = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-                            int[] targets = new int[count];
-                            for (int i = 0; i < count; i++)
-                            {
-                                targets[i] = BitConverter.ToInt32(_il, pos);
-                                pos += 4;
-                            }
-                            operandStr = string.Join(",", targets);
-                        }
-                        break;
-
-                    default:
-                        int size = OperandSize(opCode.OperandType);
-                        if (size > 0) pos += size;
-                        operandStr = "<unknown>";
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                operandStr = "<invalid>";
-            }
-
-            yield return $"IL_{offset:X4}: {opCode.Name.ToLower()} {operandStr}".TrimEnd();
+            yield return $"IL_{offset:X4}: {opCode.Name?.ToLower()} {operand}".TrimEnd();
         }
     }
 
