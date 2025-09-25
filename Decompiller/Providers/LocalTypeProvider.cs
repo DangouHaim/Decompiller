@@ -1,6 +1,6 @@
-﻿using System.Collections.Immutable;
+﻿using Decompiller.MetadataProcessing;
+using System.Collections.Immutable;
 using System.Reflection.Metadata;
-using static Decompiller.MetadataProcessing.MetadataProcessor;
 
 namespace Decompiller.Providers
 {

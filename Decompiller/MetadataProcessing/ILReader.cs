@@ -1,12 +1,11 @@
-﻿using Decompiller.MetadataProcessing.Enums;
+﻿using Decompiller.MetadataProcessing;
+using Decompiller.MetadataProcessing.Enums;
 using Decompiller.MetadataProcessing.Resolvers;
 using Decompiller.Providers;
 using System.Collections;
-using System.Globalization;
 using System.Reflection.Emit;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
-using static Decompiller.MetadataProcessing.MetadataProcessor;
 
 public class ILReader : IEnumerable<string>
 {
