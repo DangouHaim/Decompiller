@@ -192,10 +192,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
                     if (memberReference.Parent.Kind == HandleKind.TypeReference)
                     {
-                        var tr = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                        var ns = _reader.GetString(tr.Namespace);
-                        var n = _reader.GetString(tr.Name);
-                        typeName = string.IsNullOrEmpty(ns) ? n : ns + "." + n;
+                        var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
+                        var TypeNamespace = _reader.GetString(typeReference.Namespace);
+                        var name = _reader.GetString(typeReference.Name);
+                        typeName = string.IsNullOrEmpty(TypeNamespace) ? name : TypeNamespace + "." + name;
                     }
                     operandStr = $"{typeName}::{memberName}";
                 }
@@ -240,9 +240,9 @@ namespace Decompiller.MetadataProcessing.Resolvers
                             if (memberReference.Parent.Kind == HandleKind.TypeReference)
                             {
                                 var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                                var @namespace = _reader.GetString(typeReference.Namespace);
+                                var typeNamespace = _reader.GetString(typeReference.Namespace);
                                 var name = _reader.GetString(typeReference.Name);
-                                typeName = string.IsNullOrEmpty(@namespace) ? name : @namespace + "." + name;
+                                typeName = string.IsNullOrEmpty(typeNamespace) ? name : typeNamespace + "." + name;
                             }
 
                             return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
