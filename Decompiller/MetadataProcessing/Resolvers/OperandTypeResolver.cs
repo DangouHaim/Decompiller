@@ -22,23 +22,23 @@ namespace Decompiller.MetadataProcessing.Resolvers
         {
             var operandStr = string.Empty;
 
-            var token = _tokenResolver.ResolveToken<int>(il, ref pos);
+            var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveUserString(token);
+            return ResolveUserString(tokenValue);
         }
 
         public string InlineType(byte[] il, ref int pos)
         {
-            var token = _tokenResolver.ResolveToken<int>(il, ref pos);
+            var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveMemberReference(token);
+            return ResolveMemberReference(tokenValue);
         }
 
         public string InlineField(byte[] il, ref int pos)
         {
-            var token = _tokenResolver.ResolveToken<int>(il, ref pos);
+            var tokenValue = _tokenResolver.ResolveToken<int>(il, ref pos);
 
-            return ResolveInlineField(token);
+            return ResolveInlineField(tokenValue);
         }
 
         public string ShortInlineI(byte[] il, ref int pos)
@@ -66,6 +66,19 @@ namespace Decompiller.MetadataProcessing.Resolvers
             return _tokenResolver.ResolveToken<byte>(il, ref pos).ToString();
         }
 
+        public string InlineSwitch(byte[] il, ref int pos)
+        {
+            var tokensCount = _tokenResolver.ResolveToken<int>(il, ref pos);
+            var tokenValues = new int[tokensCount];
+
+            for (int i = 0; i < tokensCount; i++)
+            {
+                tokenValues[i] = _tokenResolver.ResolveToken<int>(il, ref pos);
+            }
+
+            return string.Join(",", tokenValues);
+        }
+
         public string Resolve(OpCode opCode, byte[] _il, ref int pos)
         {
             var operand = string.Empty;
@@ -80,10 +93,8 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         break;
 
                     case OperandType.InlineField:
-                        {
                             operand = InlineField(_il, ref pos);
                             break;
-                        }
 
                     case OperandType.InlineMethod:
                     case OperandType.InlineType:
@@ -112,17 +123,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         break;
 
                     case OperandType.InlineSwitch:
-                        {
-                            int count = BitConverter.ToInt32(_il, pos);
-                            pos += 4;
-                            int[] targets = new int[count];
-                            for (int i = 0; i < count; i++)
-                            {
-                                targets[i] = BitConverter.ToInt32(_il, pos);
-                                pos += 4;
-                            }
-                            operand = string.Join(",", targets);
-                        }
+                            operand = InlineSwitch(_il, ref pos);
                         break;
 
                     default:
