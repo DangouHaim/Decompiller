@@ -146,8 +146,8 @@ namespace Decompiller.MetadataProcessing.Resolvers
             var operandStr = string.Empty;
             try
             {
-                var handle = MetadataTokens.UserStringHandle(token);
-                operandStr = !handle.IsNil ? $"\"{_reader.GetUserString(handle)}\"" : Fallback.External;
+                var stringReference = MetadataTokens.UserStringHandle(token);
+                operandStr = !stringReference.IsNil ? $"\"{_reader.GetUserString(stringReference)}\"" : Fallback.External;
             }
             catch
             {
@@ -167,18 +167,18 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
                 if (handle.Kind == HandleKind.FieldDefinition)
                 {
-                    var field = _reader.Reader.GetFieldDefinition((FieldDefinitionHandle)handle);
-                    var fieldName = _reader.GetString(field.Name);
+                    var fieldReference = _reader.Reader.GetFieldDefinition((FieldDefinitionHandle)handle);
+                    var fieldName = _reader.GetString(fieldReference.Name);
 
                     // Get parent type
-                    var parentTypeHandle = field.GetDeclaringType();
+                    var parentTypeHandle = fieldReference.GetDeclaringType();
                     var parentType = _reader.Reader.GetTypeDefinition(parentTypeHandle);
                     var parentTypeName = _reader.GetString(parentType.Name);
                     var parentNamespace = _reader.GetString(parentType.Namespace);
                     var fullParentName = string.IsNullOrEmpty(parentNamespace) ? parentTypeName : parentNamespace + "." + parentTypeName;
 
                     // Get field type
-                    var sigReader = _reader.Reader.GetBlobReader(field.Signature);
+                    var sigReader = _reader.Reader.GetBlobReader(fieldReference.Signature);
                     var typeProvider = new LocalTypeProvider(_reader);
                     var fieldType = _reader.DecodeFieldSignature(ref sigReader, typeProvider).SanitizeName();
 
@@ -186,18 +186,18 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 }
                 else if (handle.Kind == HandleKind.MemberReference)
                 {
-                    var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                    var fieldName = _reader.GetString(mr.Name);
+                    var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
+                    var memberName = _reader.GetString(memberReference.Name);
                     var typeName = Fallback.External;
 
-                    if (mr.Parent.Kind == HandleKind.TypeReference)
+                    if (memberReference.Parent.Kind == HandleKind.TypeReference)
                     {
-                        var tr = _reader.Reader.GetTypeReference((TypeReferenceHandle)mr.Parent);
+                        var tr = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
                         var ns = _reader.GetString(tr.Namespace);
                         var n = _reader.GetString(tr.Name);
                         typeName = string.IsNullOrEmpty(ns) ? n : ns + "." + n;
                     }
-                    operandStr = $"{typeName}::{fieldName}";
+                    operandStr = $"{typeName}::{memberName}";
                 }
                 else
                 {
@@ -223,26 +223,26 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 {
                     case HandleKind.MethodDefinition:
                         {
-                            var method = _reader.GetMethodDefinition((MethodDefinitionHandle)handle);
-                            var name = _reader.GetString(method.Name);
-                            var declaringType = _reader.GetTypeDefinition(method.GetDeclaringType());
+                            var memberReference = _reader.GetMethodDefinition((MethodDefinitionHandle)handle);
+                            var methodName = _reader.GetString(memberReference.Name);
+                            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
                             var typeName = _reader.GetString(declaringType.Name);
 
-                            return $"instance void {typeName.SanitizeName()}::{name.SanitizeName()}()";
+                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
                         }
 
                     case HandleKind.MemberReference:
                         {
-                            var mr = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                            var methodName = _reader.GetString(mr.Name);
+                            var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
+                            var methodName = _reader.GetString(memberReference.Name);
                             var typeName = Fallback.External;
 
-                            if (mr.Parent.Kind == HandleKind.TypeReference)
+                            if (memberReference.Parent.Kind == HandleKind.TypeReference)
                             {
-                                var tr = _reader.Reader.GetTypeReference((TypeReferenceHandle)mr.Parent);
-                                var ns = _reader.GetString(tr.Namespace);
-                                var name = _reader.GetString(tr.Name);
-                                typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
+                                var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
+                                var @namespace = _reader.GetString(typeReference.Namespace);
+                                var name = _reader.GetString(typeReference.Name);
+                                typeName = string.IsNullOrEmpty(@namespace) ? name : @namespace + "." + name;
                             }
 
                             return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
@@ -250,16 +250,16 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
                     case HandleKind.TypeReference:
                         {
-                            var tRef = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
+                            var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
 
-                            return _reader.GetString(tRef.Name);
+                            return _reader.GetString(typeReference.Name);
                         }
 
                     case HandleKind.TypeDefinition:
                         {
-                            var tDef = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
+                            var typeDefinition = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
 
-                            return _reader.GetString(tDef.Name);
+                            return _reader.GetString(typeDefinition.Name);
                         }
 
                     default:
