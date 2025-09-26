@@ -106,24 +106,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         return _methodResolver.ResolveMemberReference((MemberReferenceHandle)handle);
 
                     case HandleKind.TypeReference:
-                        {
-                            /*
-                            var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
-
-                            return _reader.GetString(typeReference.Name);
-                            */
-                            return _methodResolver.ResolveTypeReference((TypeReferenceHandle)handle);
-                        }
+                        return _methodResolver.ResolveTypeReference((TypeReferenceHandle)handle);
 
                     case HandleKind.TypeDefinition:
-                        {
-                            /*
-                            var typeDefinition = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
-
-                            return _reader.GetString(typeDefinition.Name);
-                            */
-                            return _methodResolver.ResolveTypeDefinition((TypeDefinitionHandle)handle);
-                        }
+                        return _methodResolver.ResolveTypeDefinition((TypeDefinitionHandle)handle);
 
                     default:
                         return Fallback.External;

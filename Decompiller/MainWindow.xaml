@@ -4,14 +4,20 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Decompiller"
+        xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
         mc:Ignorable="d"
+        Background="#2D2D30"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.Resources>
-            <Style TargetType="TextBox">
+            <Style TargetType="avalonEdit:TextEditor">
                 <Setter Property="Margin" Value="5"/>
                 <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
                 <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="Background" Value="#1E1E1E"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="14"/>
             </Style>
             <Style TargetType="StackPanel">
                 <Setter Property="Margin" Value="5, 5, 5, 0"/>
@@ -37,9 +43,9 @@
             <Button>Compile</Button>
         </StackPanel>
 
-        <TextBox x:Name="IlEditor" Grid.Row="1"></TextBox>
-        
-        <TextBox x:Name="SharpEditor" Grid.Column="1" Grid.Row="1"></TextBox>
+        <avalonEdit:TextEditor Grid.Row="1" x:Name="IlEditor" ShowLineNumbers="True" SyntaxHighlighting="C#" />
+
+        <avalonEdit:TextEditor Grid.Column="1" Grid.Row="1" x:Name="SharpEditor" ShowLineNumbers="True" SyntaxHighlighting="C#" />
 
     </Grid>
 </Window>

@@ -1,0 +1,188 @@
+﻿<?xml version="1.0"?>
+<SyntaxDefinition name="IL" extensions=".il" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <!-- Цвета для тёмной темы -->
+  <Color name="Label" foreground="#D3D3D3" />
+  <Color name="Comment" foreground="#57A64A" />
+  <Color name="String" foreground="#00FFFF" />
+  <Color name="Number" foreground="#FF00FF" />
+  <Color name="Keyword" foreground="#3399FF" />
+  <Color name="Class" foreground="#66CCFF" />
+  <Color name="Type" foreground="#66FFFF" />
+  <Color name="Modifier" foreground="#FFD700" />
+  <Color name="Operator" foreground="#FF00FF" />
+  <Color name="InstructionFlow" foreground="#FFA500" />
+  <Color name="InstructionMath" foreground="#FF4500" />
+  <Color name="InstructionLoadStore" foreground="#00CED1" />
+  <Color name="InstructionObject" foreground="#EE82EE" />
+  <Color name="CIL" foreground="#7CFC00" />
+
+  <RuleSet>
+    <!-- Комментарии -->
+    <Span color="Comment" begin="//" end="\n" />
+
+    <!-- Метки IL -->
+    <Rule color="Label">IL_[0-9A-Fa-f]{4}:</Rule>
+
+    <!-- Строки -->
+    <Span color="String" begin="&quot;" end="&quot;" />
+
+    <!-- Числа -->
+    <Rule color="Number">\b\d+\b</Rule>
+
+    <!-- Типы данных IL -->
+    <Keywords color="Type">
+      <Word>int8</Word>
+      <Word>int16</Word>
+      <Word>int32</Word>
+      <Word>int64</Word>
+      <Word>uint8</Word>
+      <Word>uint16</Word>
+      <Word>uint32</Word>
+      <Word>uint64</Word>
+      <Word>float32</Word>
+      <Word>float64</Word>
+      <Word>char</Word>
+      <Word>string</Word>
+      <Word>bool</Word>
+      <Word>object</Word>
+      <Word>native int</Word>
+      <Word>typedref</Word>
+      <Word>var</Word>
+    </Keywords>
+
+    <!-- Модификаторы классов и методов -->
+    <Keywords color="Modifier">
+      <Word>public</Word>
+      <Word>private</Word>
+      <Word>protected</Word>
+      <Word>internal</Word>
+      <Word>static</Word>
+      <Word>abstract</Word>
+      <Word>virtual</Word>
+      <Word>final</Word>
+      <Word>hidebysig</Word>
+      <Word>beforefieldinit</Word>
+      <Word>auto</Word>
+      <Word>ansi</Word>
+    </Keywords>
+
+    <!-- Классы и объявления -->
+    <Keywords color="Class">
+      <Word>instance</Word>
+      <Word>void</Word>
+      <Word>extends</Word>
+      <Word>init</Word>
+      <Word>class</Word>
+      <Word>.class</Word>
+      <Word>.method</Word>
+      <Word>.field</Word>
+      <Word>.module</Word>
+      <Word>.namespace</Word>
+      <Word>.assembly</Word>
+      <Word>.entrypoint</Word>
+      <Word>.locals</Word>
+      <Word>.maxstack</Word>
+    </Keywords>
+
+    <!-- Управление потоком -->
+    <Keywords color="InstructionFlow">
+      <Word>nop</Word>
+      <Word>br</Word>
+      <Word>br.s</Word>
+      <Word>brfalse</Word>
+      <Word>brtrue</Word>
+      <Word>brfalse.s</Word>
+      <Word>brtrue.s</Word>
+      <Word>beq</Word>
+      <Word>bne_un</Word>
+      <Word>bge</Word>
+      <Word>bge.un</Word>
+      <Word>bgt</Word>
+      <Word>bgt.un</Word>
+      <Word>ble</Word>
+      <Word>ble.un</Word>
+      <Word>blt</Word>
+      <Word>blt.un</Word>
+      <Word>switch</Word>
+      <Word>leave</Word>
+      <Word>leave.s</Word>
+      <Word>ret</Word>
+      <Word>endfinally</Word>
+      <Word>extern</Word>
+    </Keywords>
+
+    <!-- Арифметика и логика -->
+    <Keywords color="InstructionMath">
+      <Word>nop</Word>
+      <Word>add</Word>
+      <Word>sub</Word>
+      <Word>mul</Word>
+      <Word>div</Word>
+      <Word>div.un</Word>
+      <Word>rem</Word>
+      <Word>rem.un</Word>
+      <Word>neg</Word>
+      <Word>and</Word>
+      <Word>or</Word>
+      <Word>xor</Word>
+      <Word>shl</Word>
+      <Word>shr</Word>
+      <Word>shr.un</Word>
+      <Word>not</Word>
+    </Keywords>
+
+    <!-- Загрузка и сохранение -->
+    <Keywords color="InstructionLoadStore">
+      <Word>ldloca.s</Word>
+      <Word>ldflda</Word>
+      <Word>ldarg</Word>
+      <Word>ldarg.s</Word>
+      <Word>starg</Word>
+      <Word>ldloc</Word>
+      <Word>ldloc.s</Word>
+      <Word>stloc</Word>
+      <Word>stloc.s</Word>
+      <Word>ldfld</Word>
+      <Word>stfld</Word>
+      <Word>ldsfld</Word>
+      <Word>stsfld</Word>
+      <Word>ldelem</Word>
+      <Word>stelem</Word>
+      <Word>ldlen</Word>
+      <Word>ldc.i4</Word>
+      <Word>ldc_i4</Word>
+      <Word>ldc.i8</Word>
+      <Word>ldc_i8</Word>
+      <Word>ldc.r4</Word>
+      <Word>ldc.r8</Word>
+      <Word>ldstr</Word>
+      <Word>ldnull</Word>
+      <Word>dup</Word>
+      <Word>pop</Word>
+    </Keywords>
+
+    <!-- Объектные инструкции -->
+    <Keywords color="InstructionObject">
+      <Word>newobj</Word>
+      <Word>castclass</Word>
+      <Word>isinst</Word>
+      <Word>box</Word>
+      <Word>unbox</Word>
+      <Word>unbox.any</Word>
+      <Word>sizeof</Word>
+      <Word>constrained</Word>
+      <Word>ldftn</Word>
+      <Word>call</Word>
+      <Word>callvirt</Word>
+      <Word>calli</Word>
+      <Word>initobj</Word>
+      <Word>throw</Word>
+    </Keywords>
+
+    <!-- CIL специфические метки -->
+    <Keywords color="CIL">
+      <Word>cil</Word>
+      <Word>managed</Word>
+    </Keywords>
+  </RuleSet>
+</SyntaxDefinition>
