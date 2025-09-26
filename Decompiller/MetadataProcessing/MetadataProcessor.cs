@@ -6,14 +6,14 @@ namespace Decompiller.MetadataProcessing
 {
     public class MetadataProcessor
     {
-        //private const string FilePath = @"test3\E48.exe";
-        private const string FilePath = @"console\Empty.dll";
-        //private const string FilePath = @"await\Empty.dll";
+        //private const string FilePath = @"locals\E48.exe";
+        //private const string FilePath = @"console\Empty.dll";
         //private const string FilePath = @"class\Empty.dll";
         //private const string FilePath = @"task\Empty.dll";
-        //private const string FilePath = @"action\Empty.dll";
         //private const string FilePath = @"types\Empty.dll";
-        //private const string FilePath = @"test3\E48.exe";
+        //private const string FilePath = @"action\Empty.dll";
+        //private const string FilePath = @"patterns\Patterns.dll";
+        //private const string FilePath = @"await\Empty.dll";
 
         public string LoadAssembly(string filePath = FilePath)
         {

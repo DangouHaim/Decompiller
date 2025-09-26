@@ -72,9 +72,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
             var assemblyName = _reader.GetString(_reader.Reader.GetAssemblyDefinition().Name);
 
-            bool isStatic = (methodDef.Attributes & MethodAttributes.Static) != 0;
             bool isConstructor = methodName == ".ctor" || methodName == ".cctor";
-            var staticOrInstance = isStatic ? "static" : "instance";
 
             var signature = methodDef.DecodeSignature(new LocalTypeProvider(_reader), null);
 
@@ -87,7 +85,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 paramList.Append(signature.ParameterTypes[i]);
             }
 
-            return $"{staticOrInstance} {returnType} [{assemblyName}]{fullTypeName}::{methodName}({paramList})";
+            return $"{returnType} [{assemblyName}]{fullTypeName}::{methodName}({paramList})";
         }
 
         public string ResolveMemberReference(MemberReferenceHandle handle)
@@ -133,8 +131,17 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
         public string ResolveMethodSpecification(MethodSpecificationHandle handle)
         {
-            return Fallback.Unsupported;
+            var methodSpec = _reader.Reader.GetMethodSpecification(handle);
+            var methodHandle = methodSpec.Method; // это EntityHandle
+
+            return methodHandle.Kind switch
+            {
+                HandleKind.MethodDefinition => ResolveMethodDefinition((MethodDefinitionHandle)methodHandle),
+                HandleKind.MemberReference => ResolveMemberReference((MemberReferenceHandle)methodHandle),
+                _ => Fallback.Unsupported
+            };
         }
+
 
         public bool IsBodyDefined(MethodDefinitionHandle methodDefinitionHandle)
         {
