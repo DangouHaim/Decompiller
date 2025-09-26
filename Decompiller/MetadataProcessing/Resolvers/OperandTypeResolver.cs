@@ -1,22 +1,16 @@
-﻿using Decompiller.Extentions;
-using Decompiller.MetadataProcessing.Enums;
-using Decompiller.Providers;
+﻿using Decompiller.MetadataProcessing.Enums;
 using System.Globalization;
 using System.Reflection.Emit;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Decompiller.MetadataProcessing.Resolvers
 {
     public class OperandTypeResolver
     {
-        private AssemblyReader _reader;
         private TokenResolver _tokenResolver = new TokenResolver();
         private ReferenceTypeResolver _referenceTypeResolver;
 
         public OperandTypeResolver(AssemblyReader reader)
         {
-            _reader = reader;
             _referenceTypeResolver = new ReferenceTypeResolver(reader);
         }
 
@@ -66,6 +60,13 @@ namespace Decompiller.MetadataProcessing.Resolvers
         public string ShortInlineVar(byte[] il, ref int pos)
         {
             return _tokenResolver.ResolveToken<byte>(il, ref pos).ToString();
+        }
+
+        public string ShortInlineBrTarget(byte[] il, ref int pos)
+        {
+            var tokenValue = _tokenResolver.ResolveToken<sbyte>(il, ref pos);
+
+            return _referenceTypeResolver.ResolveShortInlineBrTarget(tokenValue, pos);
         }
 
         public string InlineSwitch(byte[] il, ref int pos)
@@ -126,6 +127,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
                     case OperandType.InlineSwitch:
                             operand = InlineSwitch(_il, ref pos);
+                        break;
+
+                    case OperandType.ShortInlineBrTarget:
+                        operand = ShortInlineBrTarget(_il, ref pos);
                         break;
 
                     default:

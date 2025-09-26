@@ -1,24 +1,20 @@
 ﻿using Decompiller.Extentions;
 using Decompiller.MetadataProcessing.Enums;
 using Decompiller.Providers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Decompiller.MetadataProcessing.Resolvers
 {
     public class ReferenceTypeResolver
     {
         private AssemblyReader _reader;
+        private readonly MethodDefinitionResolver _methodResolver;
 
         public ReferenceTypeResolver(AssemblyReader reader)
         {
             _reader = reader;
+            _methodResolver = new MethodDefinitionResolver(reader);
         }
         public string ResolveUserString(int token)
         {
@@ -101,54 +97,49 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 switch (handle.Kind)
                 {
                     case HandleKind.MethodDefinition:
-                        {
-                            var memberReference = _reader.GetMethodDefinition((MethodDefinitionHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
-                            var typeName = _reader.GetString(declaringType.Name);
+                        return _methodResolver.ResolveMethodDefinition((MethodDefinitionHandle)handle);
 
-                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
-                        }
+                    case HandleKind.MethodSpecification:
+                        return _methodResolver.ResolveMethodSpecification((MethodSpecificationHandle)handle);
 
                     case HandleKind.MemberReference:
-                        {
-                            var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var typeName = Fallback.External;
-
-                            if (memberReference.Parent.Kind == HandleKind.TypeReference)
-                            {
-                                var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                                var typeNamespace = _reader.GetString(typeReference.Namespace);
-                                var name = _reader.GetString(typeReference.Name);
-                                typeName = string.IsNullOrEmpty(typeNamespace) ? name : typeNamespace + "." + name;
-                            }
-
-                            return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
-                        }
+                        return _methodResolver.ResolveMemberReference((MemberReferenceHandle)handle);
 
                     case HandleKind.TypeReference:
                         {
+                            /*
                             var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
 
                             return _reader.GetString(typeReference.Name);
+                            */
+                            return _methodResolver.ResolveTypeReference((TypeReferenceHandle)handle);
                         }
 
                     case HandleKind.TypeDefinition:
                         {
+                            /*
                             var typeDefinition = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
 
                             return _reader.GetString(typeDefinition.Name);
+                            */
+                            return _methodResolver.ResolveTypeDefinition((TypeDefinitionHandle)handle);
                         }
 
                     default:
                         return Fallback.External;
                 }
             }
-            catch
+            catch(Exception ex)
             {
                 return Fallback.External;
             }
+        }
+
+        public string ResolveShortInlineBrTarget(sbyte tokenValue, int pos)
+        {
+            var target = tokenValue + pos;
+
+            return $"IL_{target:X4}";
         }
     }
 }

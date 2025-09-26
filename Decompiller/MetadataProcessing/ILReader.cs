@@ -1,4 +1,5 @@
-﻿using Decompiller.MetadataProcessing;
+﻿using Decompiller.Extentions;
+using Decompiller.MetadataProcessing;
 using Decompiller.MetadataProcessing.Enums;
 using Decompiller.MetadataProcessing.Resolvers;
 using Decompiller.Providers;
@@ -44,7 +45,8 @@ public class ILReader : IEnumerable<string>
         );
 
         locals.AddRange(decoder.DecodeLocalSignature(ref blobReader));
-        return locals;
+
+        return (from x in locals select x.SanitizeName()).ToList();
     }
 
     public ILReader(byte[] il, AssemblyReader reader, StandaloneSignatureHandle? localSignature = null)
@@ -87,8 +89,9 @@ public class ILReader : IEnumerable<string>
                 : singleByteOpCodes[code];
 
             var operand = typeResolver.Resolve(opCode, _il, ref pos);
+            
 
-            yield return $"IL_{offset:X4}: {opCode.Name?.ToLower()} {operand}".TrimEnd();
+            yield return $"IL_{offset:X4}: {opCode.Name?.ToLower()} {operand}".TrimEnd() + $"   // {opCode.OperandType} = {(int)opCode.OperandType}";
         }
     }
 

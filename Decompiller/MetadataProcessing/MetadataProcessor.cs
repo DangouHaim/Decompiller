@@ -1,83 +1,85 @@
-﻿using Decompiller.Extentions;
-using Decompiller.Providers;
+﻿using Decompiller.MetadataProcessing.Resolvers;
 using System.IO;
-using System.Reflection;
-using System.Reflection.Metadata;
+using System.Text;
 
 namespace Decompiller.MetadataProcessing
 {
     public class MetadataProcessor
     {
-        //private const string FilePath = @"test3\E48.exe";
+        //private const string FilePath = @"locals\E48.exe";
         //private const string FilePath = @"console\Empty.dll";
-        //private const string FilePath = @"await\Empty.dll";
-        private const string FilePath = @"types\Empty.dll";
-        //private const string FilePath = @"test3\E48.exe";
+        //private const string FilePath = @"class\Empty.dll";
+        //private const string FilePath = @"task\Empty.dll";
+        //private const string FilePath = @"types\Empty.dll";
+        //private const string FilePath = @"action\Empty.dll";
+        private const string FilePath = @"await\Empty.dll";
+        
+        //private const string FilePath = @"patterns\Patterns.dll";
 
         public string LoadAssembly(string filePath = FilePath)
         {
-            string result = string.Empty;
+            var result = new StringBuilder();
 
             var reader = new AssemblyReader(filePath);
-            string assemblyName = Path.GetFileNameWithoutExtension(filePath);
-            string moduleName = Path.GetFileName(filePath);
-            result += $".assembly {assemblyName} {{}}\n";
-            result += $".module {moduleName}\n";
+            var methodResolver = new MethodDefinitionResolver(reader);
 
+            var assemblyName = Path.GetFileNameWithoutExtension(filePath);
+            var moduleName = Path.GetFileName(filePath);
+
+            // 🔹 Добавляем ссылки на внешние сборки
+            foreach (var referenceHandle in reader.Reader.AssemblyReferences)
+            {
+                var reference = reader.Reader.GetAssemblyReference(referenceHandle);
+                var referenceName = reader.GetString(reference.Name);
+                result.AppendLine($".assembly extern {referenceName} {{}}");
+            }
+
+            result.AppendLine($".assembly {assemblyName} {{}}");
+            result.AppendLine($".module {moduleName}");
+
+            // 🔹 Типы
             foreach (var typeHandle in reader.TypeDefinitions)
             {
                 var type = reader.GetTypeDefinition(typeHandle);
                 var typeName = reader.GetString(type.Name);
                 var ns = reader.GetString(type.Namespace);
 
-                string fullName = string.IsNullOrEmpty(ns) ? typeName : ns + "." + typeName;
+                var fullName = string.IsNullOrEmpty(ns) ? typeName : ns + "." + typeName;
 
-                result += $".class public auto ansi beforefieldinit {fullName}\n";
-                result += "       extends [System.Runtime]System.Object\n";
-                result += "{\n";
+                result.AppendLine($".class public auto ansi beforefieldinit {fullName}");
+                result.AppendLine("       extends [System.Runtime]System.Object");
+                result.AppendLine("{");
 
                 foreach (var methodHandle in type.GetMethods())
                 {
-                    var methodDef = reader.GetMethodDefinition(methodHandle);
-                    string methodName = reader.GetString(methodDef.Name);
+                    var methodSignature = methodResolver.ResolveMethodSignature(methodHandle);
 
-                    bool isStatic = (methodDef.Attributes & MethodAttributes.Static) != 0;
-                    bool isConstructor = methodName == ".ctor" || methodName == ".cctor";
+                    result.AppendLine($"    {methodSignature}");
+                    result.AppendLine("    {");
 
-                    string staticOrInstance = isConstructor
-                        ? (isStatic ? "static" : "instance")
-                        : (isStatic ? "static" : "");
-
-                    string returnType = isConstructor ? "void" : "void";
-
-                    result += $"    .method public hidebysig {staticOrInstance} {returnType} {methodName}() cil managed\n";
-                    result += "    {\n";
-
-                    if (methodDef.RelativeVirtualAddress != 0)
+                    if (methodResolver.IsBodyDefined(methodHandle))
                     {
-                        var body = reader.PEReader.GetMethodBody(methodDef.RelativeVirtualAddress);
-                        result += $"        .maxstack {body.MaxStack}\n";
+                        var maxStack = methodResolver.ResolveMaxStack(methodHandle);
+                        result.AppendLine($"        {maxStack}");
 
-                        var ilBytes = body.GetILBytes();
-                        var ilReader = new ILReader(ilBytes, reader, body.LocalSignature);
-
-                        foreach (var line in ilReader)
+                        foreach (var line in methodResolver.GetBody(methodHandle))
                         {
-                            result += "        " + line + "\n";
+                            result.AppendLine("        " + line);
                         }
                     }
                     else
                     {
-                        result += "        // abstract or extern, no body\n";
+                        result.AppendLine("        // abstract or extern, no body");
                     }
 
-                    result += "    }\n";
+                    result.AppendLine("    }");
                 }
 
-                result += "}\n";
+                result.AppendLine("}");
             }
 
-            return result;
+            return result.ToString();
         }
+
     }
 }
