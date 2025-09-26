@@ -7,8 +7,8 @@ namespace Decompiller.MetadataProcessing
     {
         //private const string FilePath = @"test3\E48.exe";
         //private const string FilePath = @"console\Empty.dll";
-        //private const string FilePath = @"await\Empty.dll";
-        private const string FilePath = @"class\Empty.dll";
+        private const string FilePath = @"await\Empty.dll";
+        //private const string FilePath = @"class\Empty.dll";
         //private const string FilePath = @"types\Empty.dll";
         //private const string FilePath = @"test3\E48.exe";
 

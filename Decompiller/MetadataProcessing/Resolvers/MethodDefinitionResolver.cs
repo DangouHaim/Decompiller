@@ -1,4 +1,5 @@
-﻿using Decompiller.Providers;
+﻿using Decompiller.MetadataProcessing.Enums;
+using Decompiller.Providers;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Text;
@@ -58,6 +59,20 @@ namespace Decompiller.MetadataProcessing.Resolvers
             return $".method {allModifiers} {returnType} {methodName}({paramList}) cil managed";
         }
 
+        public string ResolveMethodDefinition(MethodDefinitionHandle handle)
+        {
+            var memberReference = _reader.GetMethodDefinition(handle);
+            var methodName = _reader.GetString(memberReference.Name);
+            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
+            var typeName = _reader.GetString(declaringType.Name);
+
+            return $"instance void {typeName}::{methodName}()";
+        }
+
+        public string ResolveMethodSpecification(MethodSpecificationHandle handle)
+        {
+            return Fallback.Unsupported;
+        }
 
         public bool IsBodyDefined(MethodDefinitionHandle methodDefinitionHandle)
         {

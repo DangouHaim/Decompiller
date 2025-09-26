@@ -1,4 +1,5 @@
-﻿using Decompiller.MetadataProcessing;
+﻿using Decompiller.Extentions;
+using Decompiller.MetadataProcessing;
 using Decompiller.MetadataProcessing.Enums;
 using Decompiller.MetadataProcessing.Resolvers;
 using Decompiller.Providers;
@@ -44,6 +45,15 @@ public class ILReader : IEnumerable<string>
         );
 
         locals.AddRange(decoder.DecodeLocalSignature(ref blobReader));
+
+        for(int i = 0; i < locals.Count; i++)
+        {
+            if (locals[i].Contains("<") || locals[i].Contains(">") || locals[i].Contains("$"))
+            {
+                locals[i] = locals[i].SanitizeName();
+            }
+        }
+
         return locals;
     }
 

@@ -9,10 +9,12 @@ namespace Decompiller.MetadataProcessing.Resolvers
     public class ReferenceTypeResolver
     {
         private AssemblyReader _reader;
+        private readonly MethodDefinitionResolver _methodResolver;
 
         public ReferenceTypeResolver(AssemblyReader reader)
         {
             _reader = reader;
+            _methodResolver = new MethodDefinitionResolver(reader);
         }
         public string ResolveUserString(int token)
         {
@@ -95,14 +97,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 switch (handle.Kind)
                 {
                     case HandleKind.MethodDefinition:
-                        {
-                            var memberReference = _reader.GetMethodDefinition((MethodDefinitionHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
-                            var typeName = _reader.GetString(declaringType.Name);
+                        return _methodResolver.ResolveMethodDefinition((MethodDefinitionHandle)handle);
 
-                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
-                        }
+                    case HandleKind.MethodSpecification:
+                        return _methodResolver.ResolveMethodSpecification((MethodSpecificationHandle)handle);
 
                     case HandleKind.MemberReference:
                         {
@@ -139,7 +137,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         return Fallback.External;
                 }
             }
-            catch
+            catch(Exception ex)
             {
                 return Fallback.External;
             }
