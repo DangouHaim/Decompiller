@@ -12,8 +12,9 @@ namespace Decompiller.MetadataProcessing
         //private const string FilePath = @"task\Empty.dll";
         //private const string FilePath = @"types\Empty.dll";
         //private const string FilePath = @"action\Empty.dll";
+        private const string FilePath = @"await\Empty.dll";
+        
         //private const string FilePath = @"patterns\Patterns.dll";
-        //private const string FilePath = @"await\Empty.dll";
 
         public string LoadAssembly(string filePath = FilePath)
         {

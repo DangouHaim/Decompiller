@@ -12,8 +12,8 @@
                 || name.Contains(">")
                 || name.Contains("$"))
             {
-                return $"'{name}'";
-                //return name.Replace("<", "").Normalize().Replace(">", "").Replace("$", "_");
+                //return $"'{name}'";
+                return name.Replace("<", "_").Normalize().Replace(">", "_").Replace("$", "_");
             }
 
             return name;

@@ -107,16 +107,22 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
                     case HandleKind.TypeReference:
                         {
+                            /*
                             var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)handle);
 
                             return _reader.GetString(typeReference.Name);
+                            */
+                            return _methodResolver.ResolveTypeReference((TypeReferenceHandle)handle);
                         }
 
                     case HandleKind.TypeDefinition:
                         {
+                            /*
                             var typeDefinition = _reader.GetTypeDefinition((TypeDefinitionHandle)handle);
 
                             return _reader.GetString(typeDefinition.Name);
+                            */
+                            return _methodResolver.ResolveTypeDefinition((TypeDefinitionHandle)handle);
                         }
 
                     default:

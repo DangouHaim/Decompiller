@@ -142,6 +142,37 @@ namespace Decompiller.MetadataProcessing.Resolvers
             };
         }
 
+        public string ResolveTypeReference(TypeReferenceHandle handle)
+        {
+            var typeRef = _reader.Reader.GetTypeReference(handle);
+            var ns = _reader.GetString(typeRef.Namespace);
+            var name = _reader.GetString(typeRef.Name);
+            string typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
+
+            string assemblyName = _reader.GetString(_reader.Reader.GetAssemblyDefinition().Name);
+
+            // Если есть внешняя сборка
+            var resolutionScope = typeRef.ResolutionScope;
+            if (resolutionScope.Kind == HandleKind.AssemblyReference)
+            {
+                var asmRef = _reader.Reader.GetAssemblyReference((AssemblyReferenceHandle)resolutionScope);
+                assemblyName = _reader.GetString(asmRef.Name);
+            }
+
+            return $"class [{assemblyName}]{typeName.SanitizeName()}";
+        }
+
+        public string ResolveTypeDefinition(TypeDefinitionHandle handle)
+        {
+            var typeDef = _reader.GetTypeDefinition(handle);
+            var ns = _reader.GetString(typeDef.Namespace);
+            var name = _reader.GetString(typeDef.Name);
+            string typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
+
+            string assemblyName = _reader.GetString(_reader.Reader.GetAssemblyDefinition().Name);
+
+            return $"class [{assemblyName}]{typeName.SanitizeName()}";
+        }
 
         public bool IsBodyDefined(MethodDefinitionHandle methodDefinitionHandle)
         {
