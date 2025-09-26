@@ -103,21 +103,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                         return _methodResolver.ResolveMethodSpecification((MethodSpecificationHandle)handle);
 
                     case HandleKind.MemberReference:
-                        {
-                            var memberReference = _reader.Reader.GetMemberReference((MemberReferenceHandle)handle);
-                            var methodName = _reader.GetString(memberReference.Name);
-                            var typeName = Fallback.External;
-
-                            if (memberReference.Parent.Kind == HandleKind.TypeReference)
-                            {
-                                var typeReference = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
-                                var typeNamespace = _reader.GetString(typeReference.Namespace);
-                                var name = _reader.GetString(typeReference.Name);
-                                typeName = string.IsNullOrEmpty(typeNamespace) ? name : typeNamespace + "." + name;
-                            }
-
-                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
-                        }
+                        return _methodResolver.ResolveMemberReference((MemberReferenceHandle)handle);
 
                     case HandleKind.TypeReference:
                         {

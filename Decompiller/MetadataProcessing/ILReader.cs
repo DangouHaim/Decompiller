@@ -46,15 +46,7 @@ public class ILReader : IEnumerable<string>
 
         locals.AddRange(decoder.DecodeLocalSignature(ref blobReader));
 
-        for(int i = 0; i < locals.Count; i++)
-        {
-            if (locals[i].Contains("<") || locals[i].Contains(">") || locals[i].Contains("$"))
-            {
-                locals[i] = locals[i].SanitizeName();
-            }
-        }
-
-        return locals;
+        return (from x in locals select x.SanitizeName()).ToList();
     }
 
     public ILReader(byte[] il, AssemblyReader reader, StandaloneSignatureHandle? localSignature = null)

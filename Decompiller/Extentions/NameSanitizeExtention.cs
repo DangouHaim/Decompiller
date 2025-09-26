@@ -4,8 +4,19 @@
     {
         public static string SanitizeName(this string name)
         {
-            return string.IsNullOrWhiteSpace(name) || name.Contains("'") ? name : $"'{name}'";
-            //return name.Replace("<", "").Normalize().Replace(">", "").Replace("$", "_");
+            if (string.IsNullOrWhiteSpace(name)
+                || name.Contains("'"))
+                return name;
+
+            if(name.Contains("<")
+                || name.Contains(">")
+                || name.Contains("$"))
+            {
+                return $"'{name}'";
+                //return name.Replace("<", "").Normalize().Replace(">", "").Replace("$", "_");
+            }
+
+            return name;
         }
     }
 }

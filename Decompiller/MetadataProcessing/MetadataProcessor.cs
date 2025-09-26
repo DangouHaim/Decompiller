@@ -1,28 +1,42 @@
 ﻿using Decompiller.MetadataProcessing.Resolvers;
 using System.IO;
+using System.Text;
 
 namespace Decompiller.MetadataProcessing
 {
     public class MetadataProcessor
     {
         //private const string FilePath = @"test3\E48.exe";
-        //private const string FilePath = @"console\Empty.dll";
-        private const string FilePath = @"await\Empty.dll";
+        private const string FilePath = @"console\Empty.dll";
+        //private const string FilePath = @"await\Empty.dll";
         //private const string FilePath = @"class\Empty.dll";
+        //private const string FilePath = @"task\Empty.dll";
+        //private const string FilePath = @"action\Empty.dll";
         //private const string FilePath = @"types\Empty.dll";
         //private const string FilePath = @"test3\E48.exe";
 
         public string LoadAssembly(string filePath = FilePath)
         {
-            var result = string.Empty;
+            var result = new StringBuilder();
 
             var reader = new AssemblyReader(filePath);
             var methodResolver = new MethodDefinitionResolver(reader);
+
             var assemblyName = Path.GetFileNameWithoutExtension(filePath);
             var moduleName = Path.GetFileName(filePath);
-            result += $".assembly {assemblyName} {{}}\n";
-            result += $".module {moduleName}\n";
 
+            // 🔹 Добавляем ссылки на внешние сборки
+            foreach (var referenceHandle in reader.Reader.AssemblyReferences)
+            {
+                var reference = reader.Reader.GetAssemblyReference(referenceHandle);
+                var referenceName = reader.GetString(reference.Name);
+                result.AppendLine($".assembly extern {referenceName} {{}}");
+            }
+
+            result.AppendLine($".assembly {assemblyName} {{}}");
+            result.AppendLine($".module {moduleName}");
+
+            // 🔹 Типы
             foreach (var typeHandle in reader.TypeDefinitions)
             {
                 var type = reader.GetTypeDefinition(typeHandle);
@@ -31,39 +45,40 @@ namespace Decompiller.MetadataProcessing
 
                 var fullName = string.IsNullOrEmpty(ns) ? typeName : ns + "." + typeName;
 
-                result += $".class public auto ansi beforefieldinit {fullName}\n";
-                result += "       extends [System.Runtime]System.Object\n";
-                result += "{\n";
+                result.AppendLine($".class public auto ansi beforefieldinit {fullName}");
+                result.AppendLine("       extends [System.Runtime]System.Object");
+                result.AppendLine("{");
 
                 foreach (var methodHandle in type.GetMethods())
                 {
                     var methodSignature = methodResolver.ResolveMethodSignature(methodHandle);
 
-                    result += $"    {methodSignature}\n";
-                    result += "    {\n";
+                    result.AppendLine($"    {methodSignature}");
+                    result.AppendLine("    {");
 
                     if (methodResolver.IsBodyDefined(methodHandle))
                     {
                         var maxStack = methodResolver.ResolveMaxStack(methodHandle);
-                        result += $"        {maxStack}\n";
+                        result.AppendLine($"        {maxStack}");
 
                         foreach (var line in methodResolver.GetBody(methodHandle))
                         {
-                            result += "        " + line + "\n";
+                            result.AppendLine("        " + line);
                         }
                     }
                     else
                     {
-                        result += "        // abstract or extern, no body\n";
+                        result.AppendLine("        // abstract or extern, no body");
                     }
 
-                    result += "    }\n";
+                    result.AppendLine("    }");
                 }
 
-                result += "}\n";
+                result.AppendLine("}");
             }
 
-            return result;
+            return result.ToString();
         }
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using Decompiller.MetadataProcessing.Enums;
+﻿using Decompiller.Extentions;
+using Decompiller.MetadataProcessing.Enums;
 using Decompiller.Providers;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -61,12 +62,73 @@ namespace Decompiller.MetadataProcessing.Resolvers
 
         public string ResolveMethodDefinition(MethodDefinitionHandle handle)
         {
-            var memberReference = _reader.GetMethodDefinition(handle);
-            var methodName = _reader.GetString(memberReference.Name);
-            var declaringType = _reader.GetTypeDefinition(memberReference.GetDeclaringType());
-            var typeName = _reader.GetString(declaringType.Name);
+            var methodDef = _reader.GetMethodDefinition(handle);
+            var methodName = _reader.GetString(methodDef.Name);
 
-            return $"instance void {typeName}::{methodName}()";
+            var declaringTypeDef = _reader.GetTypeDefinition(methodDef.GetDeclaringType());
+            var typeName = _reader.GetString(declaringTypeDef.Name);
+            var typeNamespace = _reader.GetString(declaringTypeDef.Namespace);
+            string fullTypeName = string.IsNullOrEmpty(typeNamespace) ? typeName : $"{typeNamespace}.{typeName}";
+
+            var assemblyName = _reader.GetString(_reader.Reader.GetAssemblyDefinition().Name);
+
+            bool isStatic = (methodDef.Attributes & MethodAttributes.Static) != 0;
+            bool isConstructor = methodName == ".ctor" || methodName == ".cctor";
+            var staticOrInstance = isStatic ? "static" : "instance";
+
+            var signature = methodDef.DecodeSignature(new LocalTypeProvider(_reader), null);
+
+            string returnType = isConstructor ? "void" : signature.ReturnType;
+
+            StringBuilder paramList = new();
+            for (int i = 0; i < signature.ParameterTypes.Length; i++)
+            {
+                if (i > 0) paramList.Append(", ");
+                paramList.Append(signature.ParameterTypes[i]);
+            }
+
+            return $"{staticOrInstance} {returnType} [{assemblyName}]{fullTypeName}::{methodName}({paramList})";
+        }
+
+        public string ResolveMemberReference(MemberReferenceHandle handle)
+        {
+            var memberReference = _reader.Reader.GetMemberReference(handle);
+            var methodName = _reader.GetString(memberReference.Name);
+
+            string typeName = Fallback.External;
+
+            var assemblyDef = _reader.Reader.GetAssemblyDefinition();
+            string assemblyName = _reader.GetString(assemblyDef.Name);
+
+            switch (memberReference.Parent.Kind)
+            {
+                case HandleKind.TypeReference:
+                    {
+                        var typeRef = _reader.Reader.GetTypeReference((TypeReferenceHandle)memberReference.Parent);
+                        var ns = _reader.GetString(typeRef.Namespace);
+                        var name = _reader.GetString(typeRef.Name);
+                        typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
+
+                        var resolutionScope = typeRef.ResolutionScope;
+                        if (resolutionScope.Kind == HandleKind.AssemblyReference)
+                        {
+                            var asmRef = _reader.Reader.GetAssemblyReference((AssemblyReferenceHandle)resolutionScope);
+                            assemblyName = _reader.GetString(asmRef.Name);
+                        }
+                        break;
+                    }
+
+                case HandleKind.TypeDefinition:
+                    {
+                        var typeDef = _reader.GetTypeDefinition((TypeDefinitionHandle)memberReference.Parent);
+                        var ns = _reader.GetString(typeDef.Namespace);
+                        var name = _reader.GetString(typeDef.Name);
+                        typeName = string.IsNullOrEmpty(ns) ? name : ns + "." + name;
+                        break;
+                    }
+            }
+
+            return $"instance void class [{assemblyName}]{typeName.SanitizeName()}::{methodName.SanitizeName()}()";
         }
 
         public string ResolveMethodSpecification(MethodSpecificationHandle handle)
