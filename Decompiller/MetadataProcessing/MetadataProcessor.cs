@@ -1,6 +1,5 @@
-﻿using System.IO;
-using System.Reflection;
-using System.Reflection.Metadata;
+﻿using Decompiller.MetadataProcessing.Resolvers;
+using System.IO;
 
 namespace Decompiller.MetadataProcessing
 {
@@ -9,16 +8,18 @@ namespace Decompiller.MetadataProcessing
         //private const string FilePath = @"test3\E48.exe";
         //private const string FilePath = @"console\Empty.dll";
         //private const string FilePath = @"await\Empty.dll";
-        private const string FilePath = @"types\Empty.dll";
+        private const string FilePath = @"class\Empty.dll";
+        //private const string FilePath = @"types\Empty.dll";
         //private const string FilePath = @"test3\E48.exe";
 
         public string LoadAssembly(string filePath = FilePath)
         {
-            string result = string.Empty;
+            var result = string.Empty;
 
             var reader = new AssemblyReader(filePath);
-            string assemblyName = Path.GetFileNameWithoutExtension(filePath);
-            string moduleName = Path.GetFileName(filePath);
+            var methodResolver = new MethodDefinitionResolver(reader);
+            var assemblyName = Path.GetFileNameWithoutExtension(filePath);
+            var moduleName = Path.GetFileName(filePath);
             result += $".assembly {assemblyName} {{}}\n";
             result += $".module {moduleName}\n";
 
@@ -28,7 +29,7 @@ namespace Decompiller.MetadataProcessing
                 var typeName = reader.GetString(type.Name);
                 var ns = reader.GetString(type.Namespace);
 
-                string fullName = string.IsNullOrEmpty(ns) ? typeName : ns + "." + typeName;
+                var fullName = string.IsNullOrEmpty(ns) ? typeName : ns + "." + typeName;
 
                 result += $".class public auto ansi beforefieldinit {fullName}\n";
                 result += "       extends [System.Runtime]System.Object\n";
@@ -36,30 +37,17 @@ namespace Decompiller.MetadataProcessing
 
                 foreach (var methodHandle in type.GetMethods())
                 {
-                    var methodDef = reader.GetMethodDefinition(methodHandle);
-                    string methodName = reader.GetString(methodDef.Name);
+                    var methodSignature = methodResolver.ResolveMethodSignature(methodHandle);
 
-                    bool isStatic = (methodDef.Attributes & MethodAttributes.Static) != 0;
-                    bool isConstructor = methodName == ".ctor" || methodName == ".cctor";
-
-                    string staticOrInstance = isConstructor
-                        ? (isStatic ? "static" : "instance")
-                        : (isStatic ? "static" : "");
-
-                    string returnType = isConstructor ? "void" : "void";
-
-                    result += $"    .method public hidebysig {staticOrInstance} {returnType} {methodName}() cil managed\n";
+                    result += $"    {methodSignature}\n";
                     result += "    {\n";
 
-                    if (methodDef.RelativeVirtualAddress != 0)
+                    if (methodResolver.IsBodyDefined(methodHandle))
                     {
-                        var body = reader.PEReader.GetMethodBody(methodDef.RelativeVirtualAddress);
-                        result += $"        .maxstack {body.MaxStack}\n";
+                        var maxStack = methodResolver.ResolveMaxStack(methodHandle);
+                        result += $"        {maxStack}\n";
 
-                        var ilBytes = body.GetILBytes();
-                        var ilReader = new ILReader(ilBytes, reader, body.LocalSignature);
-
-                        foreach (var line in ilReader)
+                        foreach (var line in methodResolver.GetBody(methodHandle))
                         {
                             result += "        " + line + "\n";
                         }

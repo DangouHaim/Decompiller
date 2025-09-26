@@ -87,8 +87,9 @@ public class ILReader : IEnumerable<string>
                 : singleByteOpCodes[code];
 
             var operand = typeResolver.Resolve(opCode, _il, ref pos);
+            
 
-            yield return $"IL_{offset:X4}: {opCode.Name?.ToLower()} {operand}".TrimEnd();
+            yield return $"IL_{offset:X4}: {opCode.Name?.ToLower()} {operand}".TrimEnd() + $"   // {opCode.OperandType} = {(int)opCode.OperandType}";
         }
     }
 

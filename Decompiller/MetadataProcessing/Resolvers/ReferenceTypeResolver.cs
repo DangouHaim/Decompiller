@@ -118,7 +118,7 @@ namespace Decompiller.MetadataProcessing.Resolvers
                                 typeName = string.IsNullOrEmpty(typeNamespace) ? name : typeNamespace + "." + name;
                             }
 
-                            return $"void [{typeName.SanitizeName()}] {typeName.SanitizeName()}::{methodName.SanitizeName()}(string)";
+                            return $"instance void {typeName.SanitizeName()}::{methodName.SanitizeName()}()";
                         }
 
                     case HandleKind.TypeReference:
@@ -143,6 +143,13 @@ namespace Decompiller.MetadataProcessing.Resolvers
             {
                 return Fallback.External;
             }
+        }
+
+        public string ResolveShortInlineBrTarget(sbyte tokenValue, int pos)
+        {
+            var target = tokenValue + pos;
+
+            return $"IL_{target:X4}";
         }
     }
 }

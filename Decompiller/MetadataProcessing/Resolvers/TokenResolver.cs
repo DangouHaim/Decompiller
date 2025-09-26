@@ -24,6 +24,10 @@ namespace Decompiller.MetadataProcessing.Resolvers
                 {
                     return (T)(object)ResolveUShortToken(il, ref pos);
                 }
+                else if (typeof(T) == typeof(sbyte))
+                {
+                    return (T)(object)ResolveSByteToken(il, ref pos);
+                }
             }
             catch (Exception ex)
             {
@@ -57,10 +61,19 @@ namespace Decompiller.MetadataProcessing.Resolvers
             return token;
         }
 
-        private double ResolveUShortToken(byte[] il, ref int pos)
+        private ushort ResolveUShortToken(byte[] il, ref int pos)
         {
-            double token = BitConverter.ToUInt16(il, pos);
+            ushort token = BitConverter.ToUInt16(il, pos);
             pos += (int)OffsetType.Short;
+
+            return token;
+        }
+
+        private sbyte ResolveSByteToken(byte[] il, ref int pos)
+        {
+            sbyte token = (sbyte)il[pos];
+            pos += 1;
+
             return token;
         }
     }
